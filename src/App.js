@@ -11,7 +11,7 @@ function App() {
   return (
       <Router>
           <Switch>
-              <Route path="/:id" component={Room}/>
+              <Route path="/:room" component={Room}/>
               <Route path="/" component={Index}/>
           </Switch>
       </Router>

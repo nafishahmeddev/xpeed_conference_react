@@ -13,6 +13,9 @@ import {
 } from "react-icons/all";
 import io from 'socket.io-client';
 import UserThumb from "./../components/UserThumb";
+import {
+    useParams
+} from "react-router-dom";
 
 import faker from 'faker';
 import useReferredState from "../hookes/useReferredState";
@@ -42,7 +45,7 @@ const configuration = {iceServers: [
     ]};
 ///
 function Room(props){
-    const room = "cool";
+    const {room} = useParams();
     const [clients, _setClients] = useState([]);
     const clients_ref = useRef([]);
     const setClients = (data) =>{
@@ -313,6 +316,12 @@ function Room(props){
                         <label>Email</label>
                         <input type="email" name="email" placeholder="please enter email" required defaultValue={faker.internet.email()}/>
                     </div>
+
+                    <div className="input-group">
+                        <label>Room</label>
+                        <input disabled type="text" name="name" placeholder="please enter name" required defaultValue={room}/>
+                    </div>
+
                     <div className="input-group">
                         <button type="submit">Enter</button>
                     </div>
