@@ -120,7 +120,9 @@ function Room(props){
         signaling.emit("video_mute", muted);
     }
     const handlePinVideoChange = (user) =>{
-        setPinUser(user);
+        if(!Object.is(pin_user, user)) {
+            setPinUser(user);
+        }
     }
     const handleStreamChange = (user) =>{
         clients_ref.current.forEach(client=>{
