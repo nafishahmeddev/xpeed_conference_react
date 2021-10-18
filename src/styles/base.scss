@@ -16,20 +16,63 @@ body{
     margin: 0;
     font-size: 14px;
 }
-
+#root{
+    height: 100%;
+    width: 100%;
+}
 #page{
-    height: 100vh;
-    width: 100vw;
+    height: 100%;
+    width: 100%;
+    background-position: center;
+    background-size: cover;
 }
 
 .room {
     .content{
-        height: 100vh;
-        width: 100vw;
-
+        height: 100%;
+        width: 100%;
+        position: relative;
         & > video{
             height: 100%;
             width: 100%;
+        }
+        & > .pin-user-details{
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: white;
+            padding: 4px 10px;
+            font-size: 12px;
+            background-color: rgba(25, 27, 40, 0.71);
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.03);
+            & > i{
+                display: inline-block;
+                height: 8px;
+                width: 8px;
+                background-color: #199b19;
+                margin-left: 8px;
+                border-radius: 10px;
+            }
+            & > span{
+                display: block;
+            }
+        }
+        & > .user-thumb{
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            min-width: 120px;
+            max-width: 120px;
+            height: 90px;
+
+            span{
+                display: none;
+            }
         }
     }
     .bottom {
@@ -40,13 +83,17 @@ body{
         transform: translateX(-50%);
         border-radius: 15px;
         border: 1px solid rgba(255,255,255,0.03);
-        background-color: #100A1E;
+        //background-color: #100A1E;
+        background-color: rgba(25, 27, 40, 0.71);
+        backdrop-filter: blur(5px);
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: 0.25s ease-in-out;
         & > div{
             display: flex;
             color: white;
+            white-space: nowrap;
             & > div {
                 margin-left: 8px;
                 margin-right: 20px;
@@ -68,18 +115,17 @@ body{
         button {
             margin: 0 5px;
             border-radius: 10px;
-            border: none;
-            background-color: rgba(255, 255, 255, 0);
             color: #e5e5e5;
             cursor: pointer;
             transition: 0.15s;
             display: inline-flex;
-            background-color: #ffffff05;
+            background-color: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.03);
             padding: 10px 10px;
 
 
             &.active {
-                color: red;
+                background-color: red;
             }
 
             &:hover {
@@ -96,6 +142,28 @@ body{
             }
         }
     }
+
+    @media only screen and(max-width: 500px){
+        .content{
+            //max-height: calc(100% - 80px);
+        }
+        .bottom{
+            width: 100vw;
+            bottom: 0;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            padding: 15px 0;
+            position: inherit;
+            transform: inherit;
+
+            & > {
+                div{
+                    display: none;
+                }
+            }
+        }
+
+    }
 }
 
 
@@ -104,121 +172,131 @@ body{
  Settings Popup
  ********/
 .settings-popup{
-    background-color: rgba(0,0,0,0.09);
     position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
+    top: 50%;
+    left: 50%;
+    transform: translateY(-50%) translateX(-50%);
+    min-width: 320px;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: auto;
+    padding:0 15px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 25px;
-    backdrop-filter: blur(10px);
-
+    flex-wrap: wrap;
+    z-index: 9999;
+    backdrop-filter: blur(5px);
     .container{
         background-color: #191B28;
-        min-height: 300px;
-        min-width: 250px;
-        max-width: 700px;
+        max-width: 400px;
         flex: 1;
         border-radius: 10px;
         border: 1px solid rgba(255,255,255,0.03);
         color: white;
+        padding: 25px 25px;
     }
 }
 
 /******
  User Thumbs
  */
-.user-thumbs{
+.user-thumbs {
     position: fixed;
-    bottom: 90px;
+    bottom: 100px;
     width: 100%;
-    padding:0 25px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 0 13px;
     overflow-x: auto;
-    flex-wrap: wrap;
-    max-height: calc(100% - 90px);
+    display: flex;
+    flex-wrap: nowrap;
 
-    & > div{
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,0.1);
-        color: white;
-        margin: 10px;
-        min-width: 250px;
-        max-width: 250px;
-        height: 180px;
-        flex: 1;
-        background-color: #251B3C;
-        position: relative;
-        overflow: hidden;
-
-        & > footer {
-            bottom: 0;
-            left: 0;
-        }
-
-
-
-        & > footer , & > header {
-            position: absolute;
-            width: 100%;
-            padding: 3px;
-            font-size: 0;
-            display: flex;
-            z-index: 9;
-            & > span{
-                display: flex;
-                padding: 2px 8px;
-                font-size: 10px;
-                background-color: rgba(25, 27, 40, 0.71);
-                margin: 3px;
-                border-radius: 7px;
-                border: 1px solid rgba(255,255,255,0.05);
-                float: left;
-                align-items: center;
-            }
-            & > div{
-                flex: 1;
-            }
-
-            & > button {
-                display: block;
-                vertical-align: bottom;
-                padding: 2px 3px;
-                background-color: rgba(25, 27, 40, 0.71);
-                margin: 3px;
-                border-radius: 7px;
-                border: 1px solid rgba(255,255,255,0.05);
-                cursor: pointer;
-                float: left;
-                color: white;
-                &:hover{
-                    background-color: #191B28d0;
-                }
-            }
-        }
-
-
-        & > video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background-color: transparent;
-        }
-
+    .user-thumb{
+        height: 100px;
+        width: 130px;
+        min-width: 130px;
+        max-width: 130px;
+        margin: 2px;
     }
-    & > div:hover{
-        border-color: #126ccb;
-        cursor: pointer;
-    }
-    & > div.speaking{
-        border-color: yellow;
+
+    @media only screen and (max-width: 500px){
+        bottom: 80px;
     }
 }
+.user-thumb{
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.03);
+    color: white;
+    width: 250px;
+    height: 180px;
+    flex: 1;
+    background-color: rgba(25, 27, 40, 0.2);
+    backdrop-filter: blur(3px);
+    position: relative;
+    overflow: hidden;
+
+    & > footer {
+        bottom: 0;
+        left: 0;
+    }
+
+    & > footer , & > header {
+        position: absolute;
+        width: 100%;
+        padding: 3px;
+        font-size: 0;
+        display: flex;
+        z-index: 9;
+        & > span{
+            display: flex;
+            padding: 1px 4px;
+            font-size: 10px;
+            background-color: rgba(25, 27, 40, 0.71);
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+            margin: 3px;
+            float: left;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        & > div{
+            flex: 1;
+        }
+
+        & > button {
+            display: flex;
+            padding: 3px 4px;
+            font-size: 9px;
+            background-color: rgba(25, 27, 40, 0.71);
+            backdrop-filter: blur(5px);
+            border-radius: 4px;
+            margin: 3px;
+            float: left;
+            align-items: center;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.03);
+            &:hover{
+                background-color: #191B28d0;
+            }
+        }
+    }
+
+
+    & > video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background-color: transparent;
+    }
+
+}
+.user-thumb:hover{
+    border-color: #126ccb;
+    cursor: pointer;
+}
+.user-thumb.speaking{
+    border-color: yellow;
+}
+
 
 ///Login Form
 .login-form{
@@ -228,38 +306,52 @@ body{
     border: 1px solid rgba(255,255,255,0.03);
     background-color: #100A1E;
     color: white;
-    label{
-
-    }
-    .input-group{
-        margin-bottom: 20px;
-        label{
-            font-size: 12px;
-        }
-        input:not([type=checkbox]){
-            padding: 8px 15px;
-            display: block;
-            width: 100%;
-            background-color: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.03);
-            color: white;
-            margin-top: 4px;
-            border-radius: 4px;
-        }
-
-        button{
-            padding: 8px 15px;
-            border-radius: 4px;
-            background-color: rgba(255,255,255,0.8);
-            border: 1px solid #ffffff;
-            width: 100%;
-            cursor: pointer;
-            &:hover{
-                background-color: white;
-            }
-        }
-    }
 
 }
 
+
+.input-group{
+    margin-bottom: 20px;
+    label{
+        font-size: 12px;
+    }
+    input:not([type=checkbox]), select, textarea{
+        padding: 8px 15px;
+        display: block;
+        width: 100%;
+        background-color: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.03);
+        color: white;
+        margin-top: 4px;
+        border-radius: 4px;
+    }
+
+    div{
+        display: flex;
+        button:nth-child(1){
+            margin-right: 5px;
+        }
+
+        button:nth-last-child(1){
+            margin-left: 5px;
+        }
+    }
+    button{
+        padding: 8px 15px;
+        border-radius: 4px;
+        background-color: rgba(255,255,255,0.9);
+        border: 1px solid #ffffff;
+        width: 100%;
+        cursor: pointer;
+        &:hover{
+            background-color: white;
+        }
+
+        &[variant=danger]{
+            background-color: red;
+            border-color: red;
+            color: white;
+        }
+    }
+}
 

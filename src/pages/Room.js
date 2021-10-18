@@ -1,4 +1,4 @@
-import React, {useEffect, useReducer, useRef, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {
     IoCallOutline,
     IoCloseOutline,
@@ -18,8 +18,6 @@ import {
 } from "react-router-dom";
 
 import faker from 'faker';
-import useReferredState from "../hookes/useReferredState";
-
 
 const styles = {
     page:{
@@ -46,6 +44,9 @@ const configuration = {iceServers: [
 ///
 function Room(props){
     const {room} = useParams();
+    const [has_permission, setHasPermission] = useState(false);
+    const [devices, setDevices] = useState(null);
+    const [profile, setProfile] = useState(null);
     const [clients, _setClients] = useState([]);
     const clients_ref = useRef([]);
     const setClients = (data) =>{
@@ -53,103 +54,18 @@ function Room(props){
         _setClients(data);
     }
 
+    //
     const [is_open_settings, setOpenSettings] = useState(false);
-    const [is_open_thumbs, setOpenThumbs] = useState(false);
+    const [is_open_thumbs, setOpenThumbs] = useState(true);
 
     const [signaling, setSignaling] = useState(null);
-    const [profile, setProfile] = useState(null);
 
-    const [pin_user, serPinUser] = useState({});
+    const [pin_user, setPinUser] = useState({});
+
+
 
     //references
     const pin_video_ref = useRef();
-
-    //initProfile
-    const initProfile = (name, email) => {
-        const constraints = {audio: true, video: true};
-        try {
-            // Get local stream, show it in self-view, and add it to be sent.
-            navigator.mediaDevices.getUserMedia(constraints).then(stream => {
-                let pro = {
-                    id: null,
-                    name: name,
-                    email: email,
-                    stream : stream,
-                    self: true,
-                }
-                setProfile(pro);
-            });
-        } catch (err) {
-            throw  err;
-        }
-    }
-    //initSocket
-    const initSocket = () =>{
-        const query = {
-            room_id: room,
-            name : profile.name
-        }
-        let socket = io("https://xpd.herokuapp.com/conference", {
-            query
-        });
-        setSignaling(socket);
-    }
-    //initSocketHandler
-    const initSocketHandler = () =>{
-        //adder handler
-        signaling.on("join", async (event) => {
-            if (!event.id || !event.name) return;
-            let pc = await callBackOnJoin(event.id);
-            let user = {
-                id: event.id,
-                name: event.name,
-                peer: pc,
-            }
-            upsertUser(event.id, user);
-            debug(true, "join", event.id);
-        });
-        signaling.on("candidate", async (event) => {
-            let pc = getPear(event.from);
-            if (!pc) return;
-            await pc.addIceCandidate(new RTCIceCandidate(event.candidate));
-            debug(true, "candidate", event.from);
-        });
-        signaling.on("answer", async (event) => {
-            if (!event.from) return;
-            let pc = getPear(event.from);
-            if(!pc) return;
-            await pc.setRemoteDescription(new RTCSessionDescription(event.answer));
-            debug(true, "answer", event.from);
-        });
-
-        //joiner
-        signaling.on("offer", async (event) => {
-            if (!event.from || !event.name) return;
-            debug(true, "offer", event.from);
-            let pc =  await callBackOnOffer(event.from, event.offer);
-            let user = {
-                id: event.from,
-                name: event.name,
-                peer: pc
-            }
-            upsertUser(event.from, user);
-        });
-
-        //both handler
-        signaling.on("audio_mute", event=>{
-            upsertUser(event.id, {audio_muted:  event.muted})
-        })
-        signaling.on("video_mute", event=>{
-            upsertUser(event.id, {video_muted:  event.muted})
-        })
-
-        signaling.on("detached", async (id) => {
-            removeUser(id);
-        });
-        signaling.on("connect", e => {
-            console.log("connected");
-        })
-    }
 
     //user function
     const upsertUser = (id, data)=>{
@@ -167,7 +83,7 @@ function Room(props){
         }
     }
     const removeUser = (id) =>{
-        setClients(clients_ref.current.filter(ob=>ob.id!=id));
+        setClients(clients_ref.current.filter(ob=>ob.id!==id));
     }
 
     //peer function
@@ -204,14 +120,21 @@ function Room(props){
         signaling.emit("video_mute", muted);
     }
     const handlePinVideoChange = (user) =>{
-        if(user.stream && pin_video_ref.current){
-            if(!Object.is(pin_video_ref.current.sercObject, user.stream )) {
-                pin_video_ref.current.srcObject = user.stream;
-                pin_video_ref.current.play();
-                pin_video_ref.current.muted = true;
-            }
-        }
+        setPinUser(user);
     }
+    const handleStreamChange = (user) =>{
+        clients_ref.current.forEach(client=>{
+            let pc = client.peer;
+            let tracks = profile.stream.getTracks();
+            let senders = pc.getSenders();
+            senders.forEach(async sender=>{
+                let track  = tracks.find(t=>t.kind===sender.track.kind);
+                await sender.replaceTrack(track);
+            });
+
+
+        })
+    };
 
     //peer
     let callBackOnJoin = async (id) => {
@@ -280,13 +203,160 @@ function Room(props){
 
 
 
+    //init Permission
+    const initPermission = async (c=0) =>{
+        try{
+            let stream = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
+            setHasPermission(true);
+        } catch (ex){
+            setHasPermission(false)
+        }
+    }
+    //init Devices
+    const initDevices = async () =>{
+        try {
+            let sources = {
+                video: [],
+                audio: []
+            };
+            navigator.mediaDevices.enumerateDevices().then( async  dvcs=>{
+                for(let x=0; x<dvcs.length; x++) {
+                    let info = dvcs[x];
+                    let device = {info};
+                    if (info.kind === "audioinput") {
+                        //device.stream = await navigator.mediaDevices.getUserMedia({audio:{deviceId: {exact: info.deviceId}}});
+                        sources.audio.push(device);
+                    }
+                    if (info.kind === "videoinput") {
+                        //device.stream = await navigator.mediaDevices.getUserMedia({video:{deviceId: {exact: info.deviceId}}});
+                        sources.video.push(device);
+                    }
+
+                }
+
+                setDevices(sources);
+            });
+        } catch (err) {
+            alert(err.message);
+        }
+    }
+    //upsertProfile
+    const upsertProfile = async (update) => {
+        let user = {};
+        if(profile){
+            user = profile;
+        } else {
+            user = {self: true};
+        }
+        user = {...user, ...update}
+        let tracks = [];
+        if(update.audio || update.video) {
+            if(profile){profile.stream.getTracks().forEach(t=>t.stop());}
+            let audio_tracks = (await navigator.mediaDevices.getUserMedia({audio: {deviceId: {exact: user.audio}}})).getTracks(); //devices.audio.find(i => i.info.deviceId === user.audio).stream.getAudioTracks();
+            let video_tracks = (await navigator.mediaDevices.getUserMedia({video: {deviceId: {exact: user.video}}})).getTracks();//devices.video.find(i => i.info.deviceId === user.video).stream.getVideoTracks();
+
+            tracks = tracks.concat(audio_tracks);
+            tracks = tracks.concat(video_tracks);
+
+            user.stream = new MediaStream(tracks);
+            user.audio_muted = false;
+            user.video_muted = false;
+        }
+
+
+
+        setProfile(user);
+
+        if(!profile){
+            setPinUser(user);
+        }
+
+    }
+    //initSocket
+    const initSocket = () =>{
+        const query = {
+            room_id: room,
+            name : profile.name
+        }
+        let socket = io("https://xpd.herokuapp.com/conference", {
+            query
+        });
+        setSignaling(socket);
+    }
+    //initSocketHandler
+    const initSocketHandler = () =>{
+        //adder handler
+        signaling.on("join", async (event) => {
+            if (!event.id || !event.name) return;
+            let pc = await callBackOnJoin(event.id);
+            let user = {
+                id: event.id,
+                name: event.name,
+                peer: pc,
+            }
+            upsertUser(event.id, user);
+            debug(true, "join", event.id);
+        });
+        signaling.on("candidate", async (event) => {
+            let pc = getPear(event.from);
+            if (!pc) return;
+            await pc.addIceCandidate(new RTCIceCandidate(event.candidate));
+            debug(true, "candidate", event.from);
+        });
+        signaling.on("answer", async (event) => {
+            if (!event.from) return;
+            let pc = getPear(event.from);
+            if(!pc) return;
+            await pc.setRemoteDescription(new RTCSessionDescription(event.answer));
+            debug(true, "answer", event.from);
+        });
+
+        //joiner
+        signaling.on("offer", async (event) => {
+            if (!event.from || !event.name) return;
+            debug(true, "offer", event.from);
+            let pc =  await callBackOnOffer(event.from, event.offer);
+            let user = {
+                id: event.from,
+                name: event.name,
+                peer: pc
+            }
+            upsertUser(event.from, user);
+        });
+
+        //both handler
+        signaling.on("audio_mute", event=>{
+            upsertUser(event.id, {audio_muted:  event.muted})
+        })
+        signaling.on("video_mute", event=>{
+            upsertUser(event.id, {video_muted:  event.muted})
+        })
+
+        signaling.on("detached", async (id) => {
+            removeUser(id);
+        });
+        signaling.on("connect", e => {
+            console.log("connected");
+        })
+    }
     //component hooks
+    useEffect(()=>{
+        if(!has_permission){
+            initPermission(0);
+        } else {
+            initDevices();
+        }
+    }, [has_permission]);
+
     useEffect(()=>{
         //init socket if profile exists
         if(!signaling && profile) {
             initSocket();
         }
 
+        if(profile){
+            handleStreamChange();
+        }
     }, [profile]);
     useEffect(()=>{
         if(signaling && profile){
@@ -294,18 +364,51 @@ function Room(props){
             signaling.emit("join");
         }
     },[signaling]);
+    useEffect(()=>{
+        if(pin_user && pin_user.stream && pin_video_ref.current){
+            if(!Object.is(pin_video_ref.current.sercObject, pin_user.stream )) {
+                pin_video_ref.current.srcObject = pin_user.stream;
+                pin_video_ref.current.play();
+                pin_video_ref.current.muted = true;
+            }
+        }
+    }, [pin_user]);
+    useEffect(()=>{
+        if(!clients.length && profile){
+            setPinUser(profile);
+        }
+    }, [clients])
 
-    if(!profile){
+    if(!has_permission){
+        return <div id="page" className="room" style={{...styles.page,backgroundImage:'url(https://loremflickr.com/1080/720/black)'}}>
+            <div className="login-form">
+                <h3>Permission required</h3>
+                <p>Need permission to continue.</p>
+            </div>
+        </div>
+    }
+
+    if(!devices){
+        return <div id="page" className="room" style={{...styles.page,backgroundImage:'url(https://loremflickr.com/1080/720/black)'}}>
+            <div className="login-form">
+                <h3>Please wait..</h3>
+                <p>While loading devices</p>
+            </div>
+        </div>
+    }
+    if(devices && !profile){
         return <>
-            <div id="page" className="room" style={styles.page}>
+            <div id="page" className="room" style={{...styles.page,backgroundImage:'url(https://loremflickr.com/1080/720/black)'}}>
 
                 <form onSubmit={e=>{
                     e.preventDefault();
                     let fd = new FormData(e.target);
                     let name = fd.get("name");
                     let email = fd.get("email");
+                    let audio = fd.get("audio");
+                    let video = fd.get("video");
 
-                    initProfile(name, email);
+                    upsertProfile({name, email, audio, video});
                 }} className="login-form">
                     <h3>Get Started</h3>
                     <div className="input-group">
@@ -318,6 +421,29 @@ function Room(props){
                     </div>
 
                     <div className="input-group">
+                        <label>Select video source</label>
+                        <select name="video">
+                            {
+                                devices.video.map(device=>{
+                                    return <option  key={device.deviceId} value={device.info.deviceId}>{device.info.label}</option>
+                                })
+                            }
+                        </select>
+
+                    </div>
+
+                    <div className="input-group">
+                        <label>Select audio source</label>
+                        <select name="audio">
+                            {
+                                devices.audio.map(device=>{
+                                    return <option key={device.deviceId} value={device.info.deviceId}>{device.info.label}</option>
+                                })
+                            }
+                        </select>
+                    </div>
+
+                    <div className="input-group">
                         <label>Room</label>
                         <input disabled type="text" name="name" placeholder="please enter name" required defaultValue={room}/>
                     </div>
@@ -327,17 +453,20 @@ function Room(props){
                     </div>
                 </form>
             </div>
-
         </>
     }
 
     return(
         <div id="page" className="room" style={styles.page}>
             <div style={styles.content} className="content">
-
+                <div className="pin-user-details">
+                    <span>{pin_user.name} {pin_user.self?"(you)":""}</span>
+                    <i></i>
+                </div>
                 <video ref={pin_video_ref}/>
-                <audio/>
 
+
+                <UserThumb {...profile} onPinVideo={handlePinVideoChange}/>
 
             </div>
             <div className="bottom">
@@ -357,21 +486,66 @@ function Room(props){
                 <button className={`${profile.video_muted?'active':""}`} onClick={handleToggleVideo}>
                     {profile.video_muted?<IoVideocamOffOutline size={20}/>:<IoVideocamOutline size={20}/>}
                 </button>
-                <button className={`${is_open_settings?'active':""}`} onClick={e=>setOpenSettings(!is_open_settings)}><IoSettingsOutline size={20}/></button>
+                <button className={`${is_open_settings?'active':""}`}
+                        onClick={e=>setOpenSettings(!is_open_settings)}>
+                    {is_open_settings?<IoCloseOutline size={20}/>: <IoSettingsOutline size={20}/>}
 
-                <button className={`${is_open_thumbs?'active':""}`} onClick={e=>setOpenThumbs(!is_open_thumbs)}>
+                </button>
+
+                <button style={{display: "none"}} className={`${is_open_thumbs?'active':""}`} onClick={e=>setOpenThumbs(!is_open_thumbs)}>
                     {is_open_thumbs?<IoCloseOutline size={20}/>: <IoPeopleOutline size={20}/>}
                 </button>
 
                 <button><IoEllipsisVerticalOutline size={20}/></button>
 
-                <button className={`drop-btn`}><IoExitOutline size={20}/></button>
+                <button className={`drop-btn`} onClick={e=>window.location.href="/"}><IoExitOutline size={20}/></button>
             </div>
-
             {
                 is_open_settings&&
                 <div className="settings-popup">
                     <div className="container">
+                        <h3>Settings</h3>
+
+                        <form onSubmit={e=>{
+                            e.preventDefault();
+                            let fd = new FormData(e.target);
+                            let audio = fd.get("audio");
+                            let video = fd.get("video");
+
+                            upsertProfile({audio, video});
+                            setOpenSettings(false);
+                        }}>
+
+                            <div className="input-group">
+                                <label>Select video source</label>
+                                <select name="video" defaultValue={profile.video}>
+                                    {
+                                        devices.video.map(device=>{
+                                            return <option  key={device.deviceId} value={device.info.deviceId}>{device.info.label}</option>
+                                        })
+                                    }
+                                </select>
+
+                            </div>
+
+                            <div className="input-group">
+                                <label>Select audio source</label>
+                                <select name="audio" defaultValue={profile.audio}>
+                                    {
+                                        devices.audio.map(device=>{
+                                            return <option key={device.deviceId} value={device.info.deviceId}>{device.info.label}</option>
+                                        })
+                                    }
+                                </select>
+                            </div>
+
+                            <div className="input-group">
+                                <div>
+                                    <button variant="danger" type="button" onClick={e=>setOpenSettings(false)}>Close</button>
+                                    <button type="submit">Save</button>
+                                </div>
+                            </div>
+                        </form>
 
                     </div>
                 </div>
@@ -379,7 +553,6 @@ function Room(props){
             {
                 is_open_thumbs&&
                 <div className="user-thumbs">
-                    <UserThumb {...profile} onPinVideo={handlePinVideoChange}/>
                     {
                         clients.map(user=><UserThumb {...user} key={user.id}  onPinVideo={handlePinVideoChange} />)
                     }
